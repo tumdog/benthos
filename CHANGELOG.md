@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- New `grok` processor for creating structured objects from unstructured data.
+
+## 0.13.4 - 2018-06-08
+
+### Added
+
+- New `files` input type for reading multiple files as discrete messages.
+
+### Changed
+
+- Increase default `max_buffer` for `stdin`, `file` and `http_client` inputs.
+- Command flags `--print-yaml` and `--print-json` changed to provide sanitised
+  outputs unless accompanied by new `--all` flag.
+
+### Removed
+
+- Badger based buffer option has been removed.
+
+## 0.13.3 - 2018-06-06
+
+### Added
+
+- New metrics wrapper for more basic interface implementations.
+- New `delete_json` processor.
+- New field `else_processors` for `conditional` processor.
+
 ## 0.13.2 - 2018-06-03
 
 ### Added

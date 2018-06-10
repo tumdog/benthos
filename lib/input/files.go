@@ -1,4 +1,4 @@
-// Copyright (c) 2018 Ashley Jeffs
+// Copyright (c) 2014 Ashley Jeffs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,43 +18,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package buffer
+package input
 
 import (
-	"github.com/Jeffail/benthos/lib/buffer/parallel"
+	"github.com/Jeffail/benthos/lib/input/reader"
 	"github.com/Jeffail/benthos/lib/metrics"
+	"github.com/Jeffail/benthos/lib/types"
 	"github.com/Jeffail/benthos/lib/util/service/log"
 )
 
 //------------------------------------------------------------------------------
 
 func init() {
-	Constructors["badger"] = TypeSpec{
-		constructor: NewBadger,
+	Constructors["files"] = TypeSpec{
+		constructor: NewFiles,
 		description: `
-The badger buffer type uses a [badger](https://github.com/dgraph-io/badger) db
-in order to persist messages to disk as a key/value store. The benefit of this
-method is that unlike the mmap_file approach this buffer can be emptied by
-parallel consumers.
-
-Note that throughput can be significantly improved by disabling 'sync_writes',
-but this comes at the cost of delivery guarantees under crashes.
-
-This buffer has stronger delivery guarantees and higher throughput across
-brokered outputs (except for the fan_out pattern) at the cost of lower single
-output throughput.`,
+Reads files from a path, where each discrete file will be consumed as a single
+message payload. The path can either point to a single file (resulting in only a
+single message) or a directory, in which case the directory will be walked and
+each file found will become a message.`,
 	}
 }
 
 //------------------------------------------------------------------------------
 
-// NewBadger creates a buffer around a badger k/v db.
-func NewBadger(config Config, log log.Modular, stats metrics.Type) (Type, error) {
-	b, err := parallel.NewBadger(config.Badger)
+// NewFiles creates a new Files input type.
+func NewFiles(conf Config, mgr types.Manager, log log.Modular, stats metrics.Type) (Type, error) {
+	f, err := reader.NewFiles(conf.Files)
 	if err != nil {
 		return nil, err
 	}
-	return NewParallelWrapper(config, b, log, stats), nil
+	return NewReader("files", reader.NewPreserver(f), log, stats)
 }
 
 //------------------------------------------------------------------------------

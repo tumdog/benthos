@@ -1,4 +1,4 @@
-.PHONY: all deps rpm docker clean docs test fmt lint install docker-export vendor-branch release
+.PHONY: all deps rpm docker clean docs test fmt lint install docker-export
 
 BENTHOS_PATH = github.com/Jeffail/benthos
 
@@ -12,8 +12,8 @@ PATHINSTDOCKER = $(DEST_DIR)/docker
 VERSION := $(shell git describe --tags || echo "v0.0.0")
 DATE    := $(shell date +"%Y-%m-%dT%H:%M:%SZ")
 
-VER_FLAGS = -X $(BENTHOS_PATH)/lib/util/service.Version=$(VERSION) \
-	-X $(BENTHOS_PATH)/lib/util/service.DateBuilt=$(DATE)
+VER_FLAGS = -X main.Version=$(VERSION) \
+	-X main.DateBuilt=$(DATE)
 
 LD_FLAGS =
 
@@ -47,14 +47,6 @@ deps:
 	@go get github.com/golang/dep/cmd/dep
 	@$$GOPATH/bin/dep ensure
 
-vendor-branch:
-	@git checkout master-vendored
-	@git rebase master
-	@make deps
-
-release:
-	@goreleaser
-
 fmt:
 	@go list ./... | xargs -I{} gofmt -w -s $$GOPATH/src/{}
 
@@ -66,7 +58,7 @@ test:
 	@go test -short ./...
 
 test-integration:
-	@go test -timeout 60s ./...
+	@go test -timeout 300s ./...
 
 rpm:
 	@rpmbuild --define "_version $(VERSION)" -bb ./resources/rpm/benthos.spec
@@ -77,7 +69,7 @@ clean:
 	rm -rf $(PATHINSTDOCKER)
 
 docs: $(APPS)
-	@$(PATHINSTBIN)/benthos --print-yaml > ./config/everything.yaml; true
+	@$(PATHINSTBIN)/benthos --print-yaml --all > ./config/everything.yaml; true
 	@$(PATHINSTBIN)/benthos --list-inputs > ./docs/inputs/README.md; true
 	@$(PATHINSTBIN)/benthos --list-processors > ./docs/processors/README.md; true
 	@$(PATHINSTBIN)/benthos --list-conditions > ./docs/conditions/README.md; true
