@@ -162,6 +162,12 @@
   revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/glenn-brown/golang-pkg-pcre"
+  packages = ["src/pkg/pcre"]
+  revision = "48bb82a8b8ceea98f4e97825b43870f6ba1970d6"
+
+[[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
   revision = "06f5f3d67269ccec1fe5fe4134ba6e982984f7f5"
@@ -440,12 +446,6 @@
   revision = "e5adc2ada8b8efff032bf61173a233d143e9318e"
 
 [[projects]]
-  name = "github.com/trivago/grok"
-  packages = ["."]
-  revision = "af18cdd9faf3e06aedce0974c7e4012efc87658e"
-  version = "v1.0.0"
-
-[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
@@ -486,6 +486,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9ddff074358e549db7f0e3f8e805bde751be1a094f81e9cb719229f81c6e7c0f"
+  inputs-digest = "1ca48619660d7d15a1847e173b2bc2fd39748bad6bc253bf25bdb4e2dfbb856a"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -25,8 +25,8 @@ import (
 
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/types"
+	"github.com/Jeffail/benthos/lib/util/grok"
 	"github.com/Jeffail/benthos/lib/util/service/log"
-	"github.com/trivago/grok"
 )
 
 //------------------------------------------------------------------------------
@@ -61,7 +61,6 @@ type GrokConfig struct {
 	Parts       []int    `json:"parts" yaml:"parts"`
 	Patterns    []string `json:"patterns" yaml:"patterns"`
 	RemoveEmpty bool     `json:"remove_empty_values" yaml:"remove_empty_values"`
-	NamedOnly   bool     `json:"named_captures_only" yaml:"named_captures_only"`
 	UseDefaults bool     `json:"use_default_patterns" yaml:"use_default_patterns"`
 	To          string   `json:"output_format" yaml:"output_format"`
 }
@@ -72,7 +71,6 @@ func NewGrokConfig() GrokConfig {
 		Parts:       []int{},
 		Patterns:    []string{},
 		RemoveEmpty: true,
-		NamedOnly:   true,
 		UseDefaults: true,
 		To:          "json",
 	}
@@ -103,7 +101,6 @@ func NewGrok(
 ) (Type, error) {
 	gcompiler, err := grok.New(grok.Config{
 		RemoveEmptyValues:   conf.Grok.RemoveEmpty,
-		NamedCapturesOnly:   conf.Grok.NamedOnly,
 		SkipDefaultPatterns: !conf.Grok.UseDefaults,
 	})
 	if err != nil {
