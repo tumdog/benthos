@@ -1,4 +1,4 @@
-// Copyright 2015 The Mangos Authors
+// Copyright 2017 The Mangos Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -15,6 +15,7 @@
 package mangos
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -32,16 +33,18 @@ type socket struct {
 
 	sync.Mutex
 
-	uwq    chan *Message // upper write queue
-	uwqLen int           // upper write queue buffer length
-	urq    chan *Message // upper read queue
-	urqLen int           // upper read queue buffer length
-	closeq chan struct{} // closed when user requests close
+	uwq      chan *Message // upper write queue
+	uwqLen   int           // upper write queue buffer length
+	urq      chan *Message // upper read queue
+	urqLen   int           // upper read queue buffer length
+	closeq   chan struct{} // closed when user requests close
+	recverrq chan struct{} // signaled when an error is pending
 
-	closing bool  // true if Socket was closed at API level
-	active  bool  // true if either Dial or Listen has been successfully called
-	recverr error // error to return on attempts to Recv()
-	senderr error // error to return on attempts to Send()
+	closing    bool  // true if Socket was closed at API level
+	active     bool  // true if either Dial or Listen has been successfully called
+	bestEffort bool  // true if OptionBestEffort is set
+	recverr    error // error to return on attempts to Recv()
+	senderr    error // error to return on attempts to Send()
 
 	rdeadline  time.Duration
 	wdeadline  time.Duration
@@ -113,6 +116,7 @@ func newSocket(proto Protocol) *socket {
 	sock.uwq = make(chan *Message, sock.uwqLen)
 	sock.urq = make(chan *Message, sock.urqLen)
 	sock.closeq = make(chan struct{})
+	sock.recverrq = make(chan struct{})
 	sock.reconntime = time.Millisecond * 100
 	sock.reconnmax = time.Duration(0)
 	sock.proto = proto
@@ -143,10 +147,14 @@ func MakeSocket(proto Protocol) Socket {
 // API presented to Protocol implementations.
 
 func (sock *socket) SendChannel() <-chan *Message {
+	sock.Lock()
+	defer sock.Unlock()
 	return sock.uwq
 }
 
 func (sock *socket) RecvChannel() chan<- *Message {
+	sock.Lock()
+	defer sock.Unlock()
 	return sock.urq
 }
 
@@ -163,6 +171,10 @@ func (sock *socket) SetSendError(err error) {
 func (sock *socket) SetRecvError(err error) {
 	sock.Lock()
 	sock.recverr = err
+	select {
+	case sock.recverrq <- struct{}{}:
+	default:
+	}
 	sock.Unlock()
 }
 
@@ -206,6 +218,7 @@ func (sock *socket) Close() error {
 }
 
 func (sock *socket) SendMsg(msg *Message) error {
+
 	sock.Lock()
 	e := sock.senderr
 	if e != nil {
@@ -221,20 +234,36 @@ func (sock *socket) SendMsg(msg *Message) error {
 		}
 	}
 	sock.Lock()
-	timeout := mkTimer(sock.wdeadline)
-	if sock.wdeadline != 0 {
-		msg.expire = time.Now().Add(sock.wdeadline)
+	useBestEffort := sock.bestEffort
+	wdeadline := sock.wdeadline
+
+	if wdeadline != 0 {
+		msg.expire = time.Now().Add(wdeadline)
 	} else {
 		msg.expire = time.Time{}
 	}
 	sock.Unlock()
-	select {
-	case <-timeout:
-		return ErrSendTimeout
-	case <-sock.closeq:
-		return ErrClosed
-	case sock.uwq <- msg:
-		return nil
+
+	if !useBestEffort {
+		timeout := mkTimer(wdeadline)
+		select {
+		case <-timeout:
+			return ErrSendTimeout
+		case <-sock.closeq:
+			return ErrClosed
+		case sock.uwq <- msg:
+			return nil
+		}
+	} else {
+		select {
+		case <-sock.closeq:
+			return ErrClosed
+		case sock.uwq <- msg:
+			return nil
+		default:
+			msg.Free()
+			return nil
+		}
 	}
 }
 
@@ -244,17 +273,25 @@ func (sock *socket) Send(b []byte) error {
 	return sock.SendMsg(msg)
 }
 
+// String just emits a very high level debug.  This avoids
+// triggering race conditions from trying to print %v without
+// holding locks on structure members.
+func (sock *socket) String() string {
+	return fmt.Sprintf("SOCKET[%s](%p)", sock.proto.Name(), sock)
+}
+
 func (sock *socket) RecvMsg() (*Message, error) {
 	sock.Lock()
 	timeout := mkTimer(sock.rdeadline)
-	e := sock.recverr
 	sock.Unlock()
 
-	if e != nil {
-		return nil, e
-	}
-
 	for {
+		sock.Lock()
+		if e := sock.recverr; e != nil {
+			sock.Unlock()
+			return nil, e
+		}
+		sock.Unlock()
 		select {
 		case <-timeout:
 			return nil, ErrRecvTimeout
@@ -269,6 +306,7 @@ func (sock *socket) RecvMsg() (*Message, error) {
 			}
 		case <-sock.closeq:
 			return nil, ErrClosed
+		case <-sock.recverrq:
 		}
 	}
 }
@@ -413,8 +451,10 @@ func (sock *socket) SetOption(name string, value interface{}) error {
 		if length < 0 {
 			return ErrBadValue
 		}
+		owq := sock.uwq
 		sock.uwqLen = length
 		sock.uwq = make(chan *Message, sock.uwqLen)
+		close(owq)
 		return nil
 	case OptionReadQLen:
 		sock.Lock()
@@ -450,6 +490,11 @@ func (sock *socket) SetOption(name string, value interface{}) error {
 	case OptionMaxReconnectTime:
 		sock.Lock()
 		sock.reconnmax = value.(time.Duration)
+		sock.Unlock()
+		return nil
+	case OptionBestEffort:
+		sock.Lock()
+		sock.bestEffort = value.(bool)
 		sock.Unlock()
 		return nil
 	}
@@ -575,6 +620,7 @@ func (d *dialer) dialer() {
 			rtime = d.sock.reconntime
 			d.sock.Lock()
 			if d.closed {
+				d.sock.Unlock()
 				p.Close()
 				return
 			}
@@ -591,8 +637,14 @@ func (d *dialer) dialer() {
 		// we're redialing here
 		select {
 		case <-d.closeq: // dialer closed
+			if p != nil {
+				p.Close()
+			}
 			return
 		case <-d.sock.closeq: // exit if parent socket closed
+			if p != nil {
+				p.Close()
+			}
 			return
 		case <-time.After(rtime):
 			if rtmax > 0 {

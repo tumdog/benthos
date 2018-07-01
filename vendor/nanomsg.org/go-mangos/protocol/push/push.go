@@ -1,4 +1,4 @@
-// Copyright 2015 The Mangos Authors
+// Copyright 2018 The Mangos Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-mangos/mangos"
+	"nanomsg.org/go-mangos"
 )
 
 type push struct {
@@ -59,6 +59,10 @@ func (x *push) sender(ep *pushEp) {
 		case <-ep.cq:
 			return
 		case m := <-sq:
+			if m == nil {
+				sq = x.sock.SendChannel()
+				continue
+			}
 			if ep.ep.SendMsg(m) != nil {
 				m.Free()
 				return
