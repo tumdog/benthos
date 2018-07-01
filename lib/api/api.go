@@ -30,8 +30,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 	"github.com/gorilla/mux"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -42,6 +42,7 @@ import (
 type Config struct {
 	Address        string `json:"address" yaml:"address"`
 	ReadTimeoutMS  int    `json:"read_timeout_ms" yaml:"read_timeout_ms"`
+	RootPath       string `json:"root_path" yaml:"root_path"`
 	DebugEndpoints bool   `json:"debug_endpoints" yaml:"debug_endpoints"`
 }
 
@@ -50,6 +51,7 @@ func NewConfig() Config {
 	return Config{
 		Address:        "0.0.0.0:4195",
 		ReadTimeoutMS:  5000,
+		RootPath:       "/benthos",
 		DebugEndpoints: false,
 	}
 }
@@ -61,6 +63,9 @@ type Type struct {
 	conf         Config
 	endpoints    map[string]string
 	endpointsMut sync.Mutex
+
+	handlers    map[string]http.HandlerFunc
+	handlersMut sync.RWMutex
 
 	mux    *mux.Router
 	server *http.Server
@@ -85,6 +90,7 @@ func New(
 	t := &Type{
 		conf:      conf,
 		endpoints: map[string]string{},
+		handlers:  map[string]http.HandlerFunc{},
 		mux:       handler,
 		server:    server,
 	}
@@ -143,7 +149,7 @@ func New(
 			handlePrintYAMLConfig,
 		)
 		t.RegisterEndpoint(
-			"/debug/stack", "DEBUG: Returns a snapshot of the current Benthos stack trace.",
+			"/debug/stack", "DEBUG: Returns a snapshot of the current service stack trace.",
 			handleStackTrace,
 		)
 		t.RegisterEndpoint(
@@ -177,18 +183,18 @@ func New(
 		)
 	}
 
-	t.RegisterEndpoint("/ping", "Ping Benthos.", handlePing)
-	t.RegisterEndpoint("/version", "Returns the Benthos version.", handleVersion)
+	t.RegisterEndpoint("/ping", "Ping me.", handlePing)
+	t.RegisterEndpoint("/version", "Returns the service version.", handleVersion)
 	t.RegisterEndpoint("/endpoints", "Returns this map of endpoints.", handleEndpoints)
 
 	// If we want to expose a JSON stats endpoint we register the endpoints.
 	if wHandlerFunc, ok := stats.(metrics.WithHandlerFunc); ok {
 		t.RegisterEndpoint(
-			"/stats", "Returns a JSON object of Benthos metrics.",
+			"/stats", "Returns a JSON object of service metrics.",
 			wHandlerFunc.HandlerFunc(),
 		)
 		t.RegisterEndpoint(
-			"/metrics", "Returns a JSON object of Benthos metrics.",
+			"/metrics", "Returns a JSON object of service metrics.",
 			wHandlerFunc.HandlerFunc(),
 		)
 	}
@@ -204,8 +210,20 @@ func (t *Type) RegisterEndpoint(path, desc string, handler http.HandlerFunc) {
 
 	t.endpoints[path] = desc
 
-	t.mux.HandleFunc(path, handler)
-	t.mux.HandleFunc("/benthos"+path, handler)
+	t.handlersMut.Lock()
+	defer t.handlersMut.Unlock()
+
+	if _, exists := t.handlers[path]; !exists {
+		wrapHandler := func(w http.ResponseWriter, r *http.Request) {
+			t.handlersMut.RLock()
+			h := t.handlers[path]
+			t.handlersMut.RUnlock()
+			h(w, r)
+		}
+		t.mux.HandleFunc(path, wrapHandler)
+		t.mux.HandleFunc(t.conf.RootPath+path, wrapHandler)
+	}
+	t.handlers[path] = handler
 }
 
 // ListenAndServe launches the API and blocks until the server closes or fails.

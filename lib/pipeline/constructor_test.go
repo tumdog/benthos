@@ -27,10 +27,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/processor"
 	"github.com/Jeffail/benthos/lib/types"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 )
 
 func TestSanitise(t *testing.T) {
@@ -111,12 +111,12 @@ func TestProcCtor(t *testing.T) {
 
 	pipe, err := New(
 		conf, nil,
-		log.NewLogger(os.Stdout, log.LoggerConfig{LogLevel: "NONE"}),
+		log.New(os.Stdout, log.Config{LogLevel: "NONE"}),
 		metrics.DudType{},
 		func() (processor.Type, error) {
 			return processor.New(
 				secondProc, nil,
-				log.NewLogger(os.Stdout, log.LoggerConfig{LogLevel: "NONE"}),
+				log.New(os.Stdout, log.Config{LogLevel: "NONE"}),
 				metrics.DudType{},
 			)
 		},

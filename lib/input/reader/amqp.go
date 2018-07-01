@@ -25,9 +25,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/types"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 	"github.com/streadway/amqp"
 )
 
@@ -226,6 +226,9 @@ func (a *AMQP) Read() (types.Message, error) {
 func (a *AMQP) Acknowledge(err error) error {
 	a.m.RLock()
 	defer a.m.RUnlock()
+	if a.conn == nil {
+		return types.ErrNotConnected
+	}
 	if err != nil {
 		return a.amqpChan.Reject(a.ackTag, true)
 	}

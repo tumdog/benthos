@@ -329,9 +329,6 @@ line delimited list of message parts. Each part is read as an individual message
 unless multipart is set to true, in which case an empty line indicates the end
 of a message.
 
-For more information about sending HTTP messages, including details on sending
-multipart, please read the 'docs/using_http.md' document.
-
 ## `http_server`
 
 ``` yaml
@@ -362,7 +359,7 @@ kafka:
   consumer_group: benthos_consumer_group
   partition: 0
   start_from_oldest: true
-  target_version: 0.8.2.0
+  target_version: 1.0.0
   topic: benthos_stream
 ```
 
@@ -587,6 +584,7 @@ websocket:
     consumer_secret: ""
     enabled: false
     request_url: ""
+  open_message: ""
   url: ws://localhost:4195/get/ws
 ```
 

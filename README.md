@@ -13,7 +13,8 @@ A Benthos instance (stream) consists of four components; [inputs][inputs],
 optional [buffer][buffers], [processor][processors] workers and
 [outputs][outputs]. Inputs and outputs can be combined in a range of broker
 patterns. It is possible to run multiple isolated streams within a single
-Benthos instance using [`--streams` mode][streams-mode].
+Benthos instance using [`--streams` mode][streams-mode], and perform CRUD
+operations on them via [REST endpoints][streams-api].
 
 ### Delivery Guarantees
 
@@ -61,10 +62,10 @@ Or, with docker:
 ``` shell
 # Send HTTP /POST data to Kafka:
 docker run --rm \
-	-e "BENTHOS_INPUT=http_server" \
-	-e "BENTHOS_OUTPUT=kafka" \
-	-e "KAFKA_OUTPUT_BROKER_ADDRESSES=kafka-server:9092" \
-	-e "KAFKA_OUTPUT_TOPIC=benthos_topic" \
+	-e "INPUT_TYPE=http_server" \
+	-e "OUTPUT_TYPE=kafka" \
+	-e "OUTPUT_KAFKA_ADDRESSES=kafka-server:9092" \
+	-e "OUTPUT_KAFKA_TOPIC=benthos_topic" \
 	-p 4195:4195 \
 	jeffail/benthos
 
@@ -168,7 +169,7 @@ go install -tags "ZMQ4" ./cmd/...
 [config-interp]: docs/config_interpolation.md
 [compose-examples]: resources/docker/compose_examples
 [streams-api]: docs/api/streams.md
-[streams-mode]: docs/streams_mode.md
+[streams-mode]: docs/streams/README.md
 [general-docs]: docs/README.md
 [cookbook-docs]: docs/cookbook/README.md
 [env-config]: config/env/default.yaml

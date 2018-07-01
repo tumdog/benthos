@@ -2,6 +2,7 @@
 http:
   address: 0.0.0.0:4195
   read_timeout_ms: 5000
+  root_path: /benthos
   debug_endpoints: false
 input:
   type: amqp
@@ -31,5 +32,8 @@ output:
   amqp:
     exchange: benthos-exchange
     exchange_type: direct
+    immediate: false
     key: benthos-key
+    mandatory: false
+    persistent: false
     url: amqp://guest:guest@localhost:5672/

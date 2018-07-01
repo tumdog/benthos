@@ -25,20 +25,19 @@ You can [find some examples here][0].
 6. [`conditional`](#conditional)
 7. [`decompress`](#decompress)
 8. [`dedupe`](#dedupe)
-9. [`delete_json`](#delete_json)
-10. [`filter`](#filter)
+9. [`filter`](#filter)
+10. [`filter_parts`](#filter_parts)
 11. [`grok`](#grok)
 12. [`hash_sample`](#hash_sample)
 13. [`insert_part`](#insert_part)
 14. [`jmespath`](#jmespath)
-15. [`merge_json`](#merge_json)
-16. [`noop`](#noop)
-17. [`sample`](#sample)
-18. [`select_json`](#select_json)
+15. [`json`](#json)
+16. [`merge_json`](#merge_json)
+17. [`noop`](#noop)
+18. [`sample`](#sample)
 19. [`select_parts`](#select_parts)
-20. [`set_json`](#set_json)
-21. [`split`](#split)
-22. [`unarchive`](#unarchive)
+20. [`split`](#split)
+21. [`unarchive`](#unarchive)
 
 ## `archive`
 
@@ -250,24 +249,6 @@ dedupe:
 Caches should be configured as a resource, for more information check out the
 [documentation here](../caches).
 
-## `delete_json`
-
-``` yaml
-type: delete_json
-delete_json:
-  parts: []
-  path: ""
-```
-
-Parses a message part as a JSON blob, deletes a value at a given path (if it
-exists), and writes the modified JSON back to the message part.
-
-If the list of target parts is empty the processor will be applied to all
-message parts. Part indexes can be negative, and if so the part will be selected
-from the end counting backwards starting from -1. E.g. if part = -1 then the
-selected part will be the last part of the message, if part = -2 then the part
-before the last element with be selected, and so on.
-
 ## `filter`
 
 ``` yaml
@@ -293,6 +274,44 @@ filter:
 
 Tests each message against a condition, if the condition fails then the message
 is dropped. You can read a [full list of conditions here](../conditions).
+
+NOTE: If you are combining messages into batches using the
+[`combine`](#combine) or [`batch`](#batch) processors this filter will
+apply to the _whole_ batch. If you instead wish to filter _individual_ parts of
+the batch use the [`filter_parts`](#filter_parts) processor.
+
+## `filter_parts`
+
+``` yaml
+type: filter_parts
+filter_parts:
+  and: []
+  content:
+    arg: ""
+    operator: equals_cs
+    part: 0
+  count:
+    arg: 100
+  jmespath:
+    part: 0
+    query: ""
+  not: {}
+  or: []
+  resource: ""
+  static: true
+  type: content
+  xor: []
+```
+
+Tests each individual part of a message batch against a condition, if the
+condition fails then the part is dropped. If the resulting batch is empty it
+will be dropped. You can find a [full list of conditions here](../conditions),
+in this case each condition will be applied to a part as if it were a single
+part message.
+
+This processor is useful if you are combining messages into batches using the
+[`combine`](#combine) or [`batch`](#batch) processors and wish to
+remove specific parts.
 
 ## `grok`
 
@@ -419,6 +438,78 @@ counting backwards starting from -1. E.g. if part = -1 then the selected part
 will be the last part of the message, if part = -2 then the part before the
 last element with be selected, and so on.
 
+## `json`
+
+``` yaml
+type: json
+json:
+  operator: get
+  parts: []
+  path: ""
+  value: ""
+```
+
+Parses a message part as a JSON blob, performs a mutation on the data, and then
+overwrites the previous contents with the new value.
+
+If the path is empty or "." the root of the data will be targeted.
+
+If the list of target parts is empty the processor will be applied to all
+message parts. Part indexes can be negative, and if so the part will be selected
+from the end counting backwards starting from -1. E.g. if part = -1 then the
+selected part will be the last part of the message, if part = -2 then the part
+before the last element with be selected, and so on.
+
+This processor will interpolate functions within the 'value' field, you can find
+a list of functions [here](../config_interpolation.md#functions).
+
+### Operations
+
+#### `set`
+
+Sets the value of a field at a dot path. If the path does not exist all objects
+in the path are created (unless there is a collision).
+
+The value can be any type, including objects and arrays. When using YAML
+configuration files a YAML object will be converted into a JSON object, i.e.
+with the config:
+
+``` yaml
+json:
+  operator: set
+  parts: [0]
+  path: some.path
+  value:
+    foo:
+      bar: 5
+```
+
+The value will be converted into '{"foo":{"bar":5}}'. If the YAML object
+contains keys that aren't strings those fields will be ignored.
+
+#### `append`
+
+Appends a value to an array at a target dot path. If the path does not exist all
+objects in the path are created (unless there is a collision).
+
+If a non-array value already exists in the target path it will be replaced by an
+array containing the original value as well as the new value.
+
+If the value is an array the elements of the array are expanded into the new
+array. E.g. if the target is an array `[0,1]` and the value is also an
+array `[2,3]`, the result will be `[0,1,2,3]` as opposed to
+`[0,1,[2,3]]`.
+
+#### `delete`
+
+Removes a key identified by the dot path. If the path does not exist this is a
+no-op.
+
+#### `select`
+
+Reads the value found at a dot path and replaced the original contents entirely
+by the new value.
+
 ## `merge_json`
 
 ``` yaml
@@ -462,54 +553,6 @@ Passes on a randomly sampled percentage of messages. The random seed is static
 in order to sample deterministically, but can be set in config to allow parallel
 samples that are unique.
 
-## `select_json`
-
-``` yaml
-type: select_json
-select_json:
-  parts: []
-  path: ""
-```
-
-Parses a message part as a JSON blob and attempts to obtain a field within the
-structure identified by a dot path. If found successfully the value will become
-the new contents of the target message part according to its type, meaning a
-string field will be unquoted, but an object/array will remain valid JSON.
-
-For example, with the following config:
-
-``` yaml
-select_json:
-  parts: [0]
-  path: foo.bar
-```
-
-If the initial contents of part 0 were:
-
-``` json
-{"foo":{"bar":"1", "baz":"2"}}
-```
-
-Then the resulting contents of part 0 would be: `1`. However, if the
-initial contents of part 0 were:
-
-``` json
-{"foo":{"bar":{"baz":"1"}}}
-```
-
-The resulting contents of part 0 would be: `{"baz":"1"}`
-
-Sometimes messages are received in an enveloped form, where the real payload is
-a field inside a larger JSON structure. The 'select_json' processor can extract
-the payload into the message contents as a valid JSON structure in this case
-even if the payload is an escaped string.
-
-If the list of target parts is empty the processor will be applied to all
-message parts. Part indexes can be negative, and if so the part will be selected
-from the end counting backwards starting from -1. E.g. if part = -1 then the
-selected part will be the last part of the message, if part = -2 then the part
-before the last element with be selected, and so on.
-
 ## `select_parts`
 
 ``` yaml
@@ -533,47 +576,6 @@ Part indexes can be negative, and if so the part will be selected from the end
 counting backwards starting from -1. E.g. if index = -1 then the selected part
 will be the last part of the message, if index = -2 then the part before the
 last element with be selected, and so on.
-
-## `set_json`
-
-``` yaml
-type: set_json
-set_json:
-  parts: []
-  path: ""
-  value: ""
-```
-
-Parses a message part as a JSON blob, sets a path to a value, and writes the
-modified JSON back to the message part.
-
-Values can be any value type, including objects and arrays. When using YAML
-configuration files a YAML object will be converted into a JSON object, i.e.
-with the config:
-
-``` yaml
-set_json:
-  parts: [0]
-  path: some.path
-  value:
-    foo:
-      bar: 5
-```
-
-The value will be converted into '{"foo":{"bar":5}}'. If the YAML object
-contains keys that aren't strings those fields will be ignored.
-
-If the path is empty or "." the original contents of the target message part
-will be overridden entirely by the contents of 'value'.
-
-If the list of target parts is empty the processor will be applied to all
-message parts. Part indexes can be negative, and if so the part will be selected
-from the end counting backwards starting from -1. E.g. if part = -1 then the
-selected part will be the last part of the message, if part = -2 then the part
-before the last element with be selected, and so on.
-
-This processor will interpolate functions within the 'value' field, you can find
-a list of functions [here](../config_interpolation.md#functions).
 
 ## `split`
 

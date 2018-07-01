@@ -25,9 +25,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/types"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 	"github.com/Shopify/sarama"
 )
 
@@ -53,7 +53,7 @@ func NewKafkaConfig() KafkaConfig {
 		Topic:           "benthos_stream",
 		Partition:       0,
 		StartFromOldest: true,
-		TargetVersion:   sarama.V0_8_2_0.String(),
+		TargetVersion:   sarama.V1_0_0_0.String(),
 	}
 }
 

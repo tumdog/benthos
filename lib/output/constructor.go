@@ -27,13 +27,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/output/writer"
 	"github.com/Jeffail/benthos/lib/pipeline"
 	"github.com/Jeffail/benthos/lib/processor"
 	"github.com/Jeffail/benthos/lib/types"
 	"github.com/Jeffail/benthos/lib/util/config"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -64,13 +64,13 @@ type Config struct {
 	Type          string                     `json:"type" yaml:"type"`
 	AmazonS3      writer.AmazonS3Config      `json:"amazon_s3" yaml:"amazon_s3"`
 	AmazonSQS     writer.AmazonSQSConfig     `json:"amazon_sqs" yaml:"amazon_sqs"`
-	AMQP          AMQPConfig                 `json:"amqp" yaml:"amqp"`
+	AMQP          writer.AMQPConfig          `json:"amqp" yaml:"amqp"`
 	Broker        BrokerConfig               `json:"broker" yaml:"broker"`
 	Dynamic       DynamicConfig              `json:"dynamic" yaml:"dynamic"`
 	Elasticsearch writer.ElasticsearchConfig `json:"elasticsearch" yaml:"elasticsearch"`
 	File          FileConfig                 `json:"file" yaml:"file"`
 	Files         writer.FilesConfig         `json:"files" yaml:"files"`
-	HTTPClient    HTTPClientConfig           `json:"http_client" yaml:"http_client"`
+	HTTPClient    writer.HTTPClientConfig    `json:"http_client" yaml:"http_client"`
 	HTTPServer    HTTPServerConfig           `json:"http_server" yaml:"http_server"`
 	Kafka         writer.KafkaConfig         `json:"kafka" yaml:"kafka"`
 	MQTT          writer.MQTTConfig          `json:"mqtt" yaml:"mqtt"`
@@ -92,13 +92,13 @@ func NewConfig() Config {
 		Type:          "stdout",
 		AmazonS3:      writer.NewAmazonS3Config(),
 		AmazonSQS:     writer.NewAmazonSQSConfig(),
-		AMQP:          NewAMQPConfig(),
+		AMQP:          writer.NewAMQPConfig(),
 		Broker:        NewBrokerConfig(),
 		Dynamic:       NewDynamicConfig(),
 		Elasticsearch: writer.NewElasticsearchConfig(),
 		File:          NewFileConfig(),
 		Files:         writer.NewFilesConfig(),
-		HTTPClient:    NewHTTPClientConfig(),
+		HTTPClient:    writer.NewHTTPClientConfig(),
 		HTTPServer:    NewHTTPServerConfig(),
 		Kafka:         writer.NewKafkaConfig(),
 		MQTT:          writer.NewMQTTConfig(),

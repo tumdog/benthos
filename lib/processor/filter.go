@@ -23,10 +23,10 @@ package processor
 import (
 	"fmt"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/processor/condition"
 	"github.com/Jeffail/benthos/lib/types"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 )
 
 //------------------------------------------------------------------------------
@@ -36,7 +36,12 @@ func init() {
 		constructor: NewFilter,
 		description: `
 Tests each message against a condition, if the condition fails then the message
-is dropped. You can read a [full list of conditions here](../conditions).`,
+is dropped. You can read a [full list of conditions here](../conditions).
+
+NOTE: If you are combining messages into batches using the
+` + "[`combine`](#combine) or [`batch`](#batch)" + ` processors this filter will
+apply to the _whole_ batch. If you instead wish to filter _individual_ parts of
+the batch use the ` + "[`filter_parts`](#filter_parts)" + ` processor.`,
 	}
 }
 

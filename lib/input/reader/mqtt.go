@@ -22,11 +22,12 @@ package reader
 
 import (
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/types"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
@@ -55,6 +56,7 @@ func NewMQTTConfig() MQTTConfig {
 // MQTT is an input type that reads MQTT Pub/Sub messages.
 type MQTT struct {
 	client mqtt.Client
+	cMut   sync.Mutex
 
 	conf MQTTConfig
 
@@ -94,6 +96,9 @@ func NewMQTT(
 
 // Connect establishes a connection to an MQTT server.
 func (m *MQTT) Connect() error {
+	m.cMut.Lock()
+	defer m.cMut.Unlock()
+
 	if m.client != nil {
 		return nil
 	}
@@ -151,11 +156,13 @@ func (m *MQTT) Acknowledge(err error) error {
 
 // CloseAsync shuts down the MQTT input and stops processing requests.
 func (m *MQTT) CloseAsync() {
+	m.cMut.Lock()
 	if m.client != nil {
 		m.client.Disconnect(0)
 		m.client = nil
 		close(m.interruptChan)
 	}
+	m.cMut.Unlock()
 }
 
 // WaitForClose blocks until the MQTT input has closed down.

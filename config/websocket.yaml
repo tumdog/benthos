@@ -2,6 +2,7 @@
 http:
   address: 0.0.0.0:4195
   read_timeout_ms: 5000
+  root_path: /benthos
   debug_endpoints: false
 input:
   type: websocket
@@ -17,6 +18,7 @@ input:
       consumer_secret: ""
       enabled: false
       request_url: ""
+    open_message: ""
     url: ws://localhost:4195/get/ws
 buffer:
   type: none

@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.15.0 - 2018-06-28
+
+### Added
+
+- Support for PATCH verb on the streams mode `/streams/{id}` endpoint.
+
+### Changed
+
+- Sweeping changes were made to the environment variable configuration file.
+  This file is now auto generated along with its supporting document. This
+  change will impact the docker image.
+
+## 0.14.7 - 2018-06-24
+
+### Added
+
+- New `filter_parts` processor for filtering individual parts of a message
+  batch.
+- New field `open_message` for `websocket` input.
+
+### Changed
+
+- No longer setting default input processor.
+
+## 0.14.6 - 2018-06-21
+
+### Added
+
+- New `root_path` field for service wide `http` config.
+
+## 0.14.5 - 2018-06-21
+
+### Added
+
+- New `regexp_exact` and `regexp_partial` content condition operators.
+
+## 0.14.4 - 2018-06-19
+
+## Changed
+
+- The `statsd` metrics target will now periodically report connection errors.
+
+## 0.14.2 - 2018-06-18
+
+## Changed
+
+- The `json` processor will now `append` array values in expanded form.
+
+## 0.14.0 - 2018-06-15
+
+### Added
+
+- More granular config options in the `http_client` output for controlling retry
+  logic.
+- New `try` pattern for the output `broker` type, which can be used in order to
+  configure fallback outputs.
+- New `json` processor, this replaces `delete_json`, `select_json`, `set_json`.
+
+### Changed
+
+- The `streams` API endpoints have been changed to become more "RESTy".
+- Removed the `delete_json`, `select_json` and `set_json` processors, please use
+  the `json` processor instead.
+
+## 0.13.5 - 2018-06-10
+
 ### Added
 
 - New `grok` processor for creating structured objects from unstructured data.

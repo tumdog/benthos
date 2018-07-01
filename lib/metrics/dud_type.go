@@ -20,6 +20,8 @@
 
 package metrics
 
+import "github.com/Jeffail/benthos/lib/log"
+
 //------------------------------------------------------------------------------
 
 // DudStat implements the Stat interface but doesn't actual do anything.
@@ -44,6 +46,9 @@ type DudType struct {
 	ID int
 }
 
+// Noop is an alias for DudType.
+type Noop DudType
+
 // GetCounter returns a DudStat.
 func (d DudType) GetCounter(path ...string) StatCounter { return DudStat{} }
 
@@ -52,6 +57,9 @@ func (d DudType) GetTimer(path ...string) StatTimer { return DudStat{} }
 
 // GetGauge returns a DudStat.
 func (d DudType) GetGauge(path ...string) StatGauge { return DudStat{} }
+
+// SetLogger does nothing.
+func (d DudType) SetLogger(log log.Modular) {}
 
 // Incr does nothing.
 func (d DudType) Incr(path string, count int64) error { return nil }

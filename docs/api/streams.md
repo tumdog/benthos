@@ -8,6 +8,8 @@ stream.
 Each stream has its own input, buffer, pipeline and output sections which
 contains an isolated stream of data with its own lifetime.
 
+A walkthrough on using this API [can be found here][streams-api-walkthrough].
+
 ## API
 
 ### GET `/streams`
@@ -44,7 +46,7 @@ request body are created.
 
 The streams were updated successfully.
 
-### POST `/stream/{id}`
+### POST `/streams/{id}`
 
 Create a new stream identified by `id` by posting a body containing the stream
 configuration in either JSON or YAML format. The configuration should be a
@@ -55,7 +57,7 @@ standard Benthos configuration containing the sections `input`, `buffer`,
 
 The stream was created successfully.
 
-### GET `/stream/{id}`
+### GET `/streams/{id}`
 
 Read the details of an existing stream identified by `id`.
 
@@ -70,7 +72,7 @@ Read the details of an existing stream identified by `id`.
 }
 ```
 
-### PUT `/stream/{id}`
+### PUT `/streams/{id}`
 
 Update an existing stream identified by `id` by posting a body containing the
 new stream configuration in either JSON or YAML format. The configuration should
@@ -84,10 +86,22 @@ place.
 
 The stream was updated successfully.
 
-### DELETE `/stream/{id}`
+### PATCH `/streams/{id}`
+
+Update an existing stream identified by `id` by posting a body containing only
+changes to be made to the existing configuration. The existing configuration
+will be patched with the new fields and the stream restarted with the result.
+
+#### Response 200
+
+The stream was patched successfully.
+
+### DELETE `/streams/{id}`
 
 Attempt to shut down and remove a stream identified by `id`.
 
 #### Response 200
 
 The stream was found, shut down and removed successfully.
+
+[streams-api-walkthrough]: ../streams/using_REST_API.md

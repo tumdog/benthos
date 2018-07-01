@@ -23,9 +23,9 @@ package output
 import (
 	"os"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/types"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 )
 
 //------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ func NewFile(conf Config, mgr types.Manager, log log.Modular, stats metrics.Type
 	if err != nil {
 		return nil, err
 	}
-	return NewLineWriter(file, []byte(conf.File.Delim), "file", log, stats)
+	return NewLineWriter(file, true, []byte(conf.File.Delim), "file", log, stats)
 }
 
 //------------------------------------------------------------------------------

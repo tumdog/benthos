@@ -25,16 +25,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/types"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 )
 
 func TestMemoryBuffer(t *testing.T) {
 	conf := NewConfig()
 	conf.Type = "memory"
 
-	buf, err := New(conf, log.NewLogger(os.Stdout, logConfig), metrics.DudType{})
+	buf, err := New(conf, log.New(os.Stdout, logConfig), metrics.DudType{})
 	if err != nil {
 		t.Error(err)
 		return

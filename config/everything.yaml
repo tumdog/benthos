@@ -1,6 +1,7 @@
 http:
   address: 0.0.0.0:4195
   read_timeout_ms: 5000
+  root_path: /benthos
   debug_endpoints: false
 input:
   type: stdin
@@ -92,7 +93,7 @@ input:
     topic: benthos_stream
     partition: 0
     start_from_oldest: true
-    target_version: 0.8.2.0
+    target_version: 1.0.0
   kafka_balanced:
     addresses:
     - localhost:9092
@@ -172,6 +173,7 @@ input:
     delimiter: ""
   websocket:
     url: ws://localhost:4195/get/ws
+    open_message: ""
     oauth:
       enabled: false
       consumer_key: ""
@@ -191,6 +193,20 @@ input:
     sub_filters: []
     high_water_mark: 0
     poll_timeout_ms: 5000
+  processors: []
+buffer:
+  type: none
+  memory:
+    limit: 524288000
+  mmap_file:
+    directory: ""
+    file_size: 262144000
+    retry_period_ms: 1000
+    clean_up: true
+    reserved_disk_space: 104857600
+  none: {}
+pipeline:
+  threads: 1
   processors:
   - type: bounds_check
     archive:
@@ -239,10 +255,24 @@ input:
       - 0
       json_paths: []
       drop_on_err: true
-    delete_json:
-      parts: []
-      path: ""
     filter:
+      type: content
+      and: []
+      content:
+        operator: equals_cs
+        part: 0
+        arg: ""
+      count:
+        arg: 100
+      jmespath:
+        part: 0
+        query: ""
+      not: {}
+      or: []
+      resource: ""
+      static: true
+      xor: []
+    filter_parts:
       type: content
       and: []
       content:
@@ -277,40 +307,24 @@ input:
     jmespath:
       parts: []
       query: ""
+    json:
+      parts: []
+      operator: get
+      path: ""
+      value: ""
     merge_json:
       parts: []
       retain_parts: false
     sample:
       retain: 10
       seed: 0
-    select_json:
-      parts: []
-      path: ""
     select_parts:
       parts:
       - 0
-    set_json:
-      parts: []
-      path: ""
-      value: ""
     split: {}
     unarchive:
       format: binary
       parts: []
-buffer:
-  type: none
-  memory:
-    limit: 524288000
-  mmap_file:
-    directory: ""
-    file_size: 262144000
-    retry_period_ms: 1000
-    clean_up: true
-    reserved_disk_space: 104857600
-  none: {}
-pipeline:
-  threads: 1
-  processors: []
 output:
   type: stdout
   amazon_s3:
@@ -336,6 +350,9 @@ output:
     exchange: benthos-exchange
     exchange_type: direct
     key: benthos-key
+    persistent: false
+    mandatory: false
+    immediate: false
   broker:
     copies: 1
     pattern: fan_out
@@ -367,6 +384,9 @@ output:
     retry_period_ms: 1000
     max_retry_backoff_ms: 300000
     retries: 3
+    backoff_on:
+    - 429
+    drop_on: []
     skip_cert_verify: false
     oauth:
       enabled: false
@@ -398,7 +418,7 @@ output:
     max_msg_bytes: 1000000
     timeout_ms: 5000
     ack_replicas: false
-    target_version: 0.8.2.0
+    target_version: 1.0.0
   mqtt:
     urls:
     - tcp://localhost:1883
@@ -488,7 +508,7 @@ resources:
       static: true
       xor: []
 logger:
-  prefix: service
+  prefix: benthos
   log_level: INFO
   add_timestamp: true
   json_format: true

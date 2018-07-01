@@ -25,13 +25,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/types"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 )
 
 //------------------------------------------------------------------------------
 
-var logConfig = log.LoggerConfig{
+var logConfig = log.Config{
 	LogLevel: "NONE",
 }
 

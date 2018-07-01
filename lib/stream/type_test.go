@@ -25,15 +25,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
 	"github.com/Jeffail/benthos/lib/processor"
 	"github.com/Jeffail/benthos/lib/types"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 )
 
 func TestTypeConstruction(t *testing.T) {
 	conf := NewConfig()
 	conf.Input.Type = "scalability_protocols"
+	conf.Input.ScaleProto.PollTimeoutMS = 100
 	conf.Output.Type = "scalability_protocols"
 
 	strm, err := New(conf) // nanomsg => nanomsg
@@ -53,14 +54,14 @@ func TestTypeConstruction(t *testing.T) {
 		t.Error("nil manager")
 	}
 
-	if err = strm.Stop(time.Second); err != nil {
+	if err = strm.Stop(time.Second * 10); err != nil {
 		t.Error(err)
 	}
 
 	newStats := metrics.DudType{
 		ID: 1,
 	}
-	newLogger := log.NewLogger(os.Stdout, log.LoggerConfig{LogLevel: "NONE"})
+	newLogger := log.New(os.Stdout, log.Config{LogLevel: "NONE"})
 	newMgr := types.DudMgr{
 		ID: 2,
 	}

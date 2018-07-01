@@ -26,6 +26,8 @@ import (
 	"errors"
 	"sort"
 	"strings"
+
+	"github.com/Jeffail/benthos/lib/log"
 )
 
 //------------------------------------------------------------------------------
@@ -40,7 +42,7 @@ var (
 // typeSpec is a constructor and a usage description for each metric output
 // type.
 type typeSpec struct {
-	constructor func(conf Config) (Type, error)
+	constructor func(conf Config, opts ...func(Type)) (Type, error)
 	description string
 }
 
@@ -62,7 +64,7 @@ type Config struct {
 func NewConfig() Config {
 	return Config{
 		Type:       "http_server",
-		Prefix:     "service",
+		Prefix:     "benthos",
 		HTTP:       struct{}{},
 		Prometheus: struct{}{},
 		Statsd:     NewStatsdConfig(),
@@ -87,6 +89,15 @@ func SanitiseConfig(conf Config) (interface{}, error) {
 	outputMap[conf.Type] = hashMap[conf.Type]
 
 	return outputMap, nil
+}
+
+//------------------------------------------------------------------------------
+
+// OptSetLogger sets the logging output to be used by the metrics clients.
+func OptSetLogger(log log.Modular) func(Type) {
+	return func(t Type) {
+		t.SetLogger(log)
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -122,12 +133,12 @@ func Descriptions() string {
 }
 
 // New creates a metric output type based on a configuration.
-func New(conf Config) (Type, error) {
+func New(conf Config, opts ...func(Type)) (Type, error) {
 	if conf.Type == "none" {
 		return DudType{}, nil
 	}
 	if c, ok := constructors[conf.Type]; ok {
-		return c.constructor(conf)
+		return c.constructor(conf, opts...)
 	}
 	return nil, ErrInvalidMetricOutputType
 }

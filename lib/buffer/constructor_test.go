@@ -26,8 +26,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Jeffail/benthos/lib/log"
 	"github.com/Jeffail/benthos/lib/metrics"
-	"github.com/Jeffail/benthos/lib/util/service/log"
 )
 
 func TestConstructorDescription(t *testing.T) {
@@ -40,7 +40,7 @@ func TestConstructorBadType(t *testing.T) {
 	conf := NewConfig()
 	conf.Type = "not_exist"
 
-	if _, err := New(conf, log.NewLogger(os.Stdout, logConfig), metrics.DudType{}); err == nil {
+	if _, err := New(conf, log.New(os.Stdout, logConfig), metrics.DudType{}); err == nil {
 		t.Error("Expected error, received nil for invalid type")
 	}
 }
