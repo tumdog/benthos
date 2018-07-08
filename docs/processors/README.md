@@ -23,21 +23,24 @@ You can [find some examples here][0].
 4. [`combine`](#combine)
 5. [`compress`](#compress)
 6. [`conditional`](#conditional)
-7. [`decompress`](#decompress)
-8. [`dedupe`](#dedupe)
-9. [`filter`](#filter)
-10. [`filter_parts`](#filter_parts)
-11. [`grok`](#grok)
-12. [`hash_sample`](#hash_sample)
-13. [`insert_part`](#insert_part)
-14. [`jmespath`](#jmespath)
-15. [`json`](#json)
-16. [`merge_json`](#merge_json)
-17. [`noop`](#noop)
-18. [`sample`](#sample)
-19. [`select_parts`](#select_parts)
-20. [`split`](#split)
-21. [`unarchive`](#unarchive)
+7. [`decode`](#decode)
+8. [`decompress`](#decompress)
+9. [`dedupe`](#dedupe)
+10. [`encode`](#encode)
+11. [`filter`](#filter)
+12. [`filter_parts`](#filter_parts)
+13. [`grok`](#grok)
+14. [`hash_sample`](#hash_sample)
+15. [`http`](#http)
+16. [`insert_part`](#insert_part)
+17. [`jmespath`](#jmespath)
+18. [`json`](#json)
+19. [`merge_json`](#merge_json)
+20. [`noop`](#noop)
+21. [`sample`](#sample)
+22. [`select_parts`](#select_parts)
+23. [`split`](#split)
+24. [`unarchive`](#unarchive)
 
 ## `archive`
 
@@ -49,7 +52,7 @@ archive:
 ```
 
 Archives all the parts of a message into a single part according to the selected
-archive type. Supported archive types are: tar, binary (I'll add more later).
+archive type. Supported archive types are: tar, binary, lines.
 
 Some archive types (such as tar) treat each archive item (message part) as a
 file with a path. Since message parts only contain raw data a unique path must
@@ -63,6 +66,7 @@ types that aren't file based (such as binary) the file field is ignored.
 type: batch
 batch:
   byte_size: 10000
+  period_ms: 0
 ```
 
 Reads a number of discrete messages, buffering (but not acknowledging) the
@@ -71,6 +75,12 @@ configured byte size. Once the limit is reached the parts are combined into a
 single batch of messages and sent through the pipeline. Once the combined batch
 has reached a destination the acknowledgment is sent out for all messages inside
 the batch, preserving at-least-once delivery guarantees.
+
+The `period_ms` field is optional, and when greater than zero defines
+a period in milliseconds whereby a batch is sent even if the `byte_size`
+has not yet been reached. Batch parameters are only triggered when a message is
+added, meaning a pending batch can last beyond this period if no messages are
+added since the period was reached.
 
 When a batch is sent to an output the behaviour will differ depending on the
 protocol. If the output type supports multipart messages then the batch is sent
@@ -136,7 +146,7 @@ compress:
 ```
 
 Compresses parts of a message according to the selected algorithm. Supported
-compression types are: gzip (I'll add more later). If the list of target parts
+available compression types are: gzip, zlib, flate. If the list of target parts
 is empty the compression will be applied to all message parts.
 
 The 'level' field might not apply to all algorithms.
@@ -152,22 +162,11 @@ last element with be selected, and so on.
 type: conditional
 conditional:
   condition:
-    and: []
+    type: content
     content:
       arg: ""
       operator: equals_cs
       part: 0
-    count:
-      arg: 100
-    jmespath:
-      part: 0
-      query: ""
-    not: {}
-    or: []
-    resource: ""
-    static: true
-    type: content
-    xor: []
   else_processors: []
   processors: []
 ```
@@ -177,6 +176,24 @@ Conditional is a processor that has a list of child 'processors',
 child 'processors' will be applied, otherwise the 'else_processors' are applied.
 This processor is useful for applying processors such as 'dedupe' based on the
 content type of the message.
+
+## `decode`
+
+``` yaml
+type: decode
+decode:
+  parts: []
+  scheme: base64
+```
+
+Decodes parts of a message according to the selected scheme. Supported available
+schemes are: base64. If the list of target parts is empty the decoding will be
+applied to all message parts.
+
+Part indexes can be negative, and if so the part will be selected from the end
+counting backwards starting from -1. E.g. if index = -1 then the selected part
+will be the last part of the message, if index = -2 then the part before the
+last element with be selected, and so on.
 
 ## `decompress`
 
@@ -188,7 +205,7 @@ decompress:
 ```
 
 Decompresses the parts of a message according to the selected algorithm.
-Supported decompression types are: gzip (I'll add more later). If the list of
+Supported decompression types are: gzip, zlib, bzip2, flate. If the list of
 target parts is empty the decompression will be applied to all message parts.
 
 Part indexes can be negative, and if so the part will be selected from the end
@@ -249,27 +266,34 @@ dedupe:
 Caches should be configured as a resource, for more information check out the
 [documentation here](../caches).
 
+## `encode`
+
+``` yaml
+type: encode
+encode:
+  parts: []
+  scheme: base64
+```
+
+Encodes parts of a message according to the selected scheme. Supported available
+schemes are: base64. If the list of target parts is empty the encoding will be
+applied to all message parts.
+
+Part indexes can be negative, and if so the part will be selected from the end
+counting backwards starting from -1. E.g. if index = -1 then the selected part
+will be the last part of the message, if index = -2 then the part before the
+last element with be selected, and so on.
+
 ## `filter`
 
 ``` yaml
 type: filter
 filter:
-  and: []
+  type: content
   content:
     arg: ""
     operator: equals_cs
     part: 0
-  count:
-    arg: 100
-  jmespath:
-    part: 0
-    query: ""
-  not: {}
-  or: []
-  resource: ""
-  static: true
-  type: content
-  xor: []
 ```
 
 Tests each message against a condition, if the condition fails then the message
@@ -365,6 +389,60 @@ The part indexes can be negative, and if so the part will be selected from the
 end counting backwards starting from -1. E.g. if index = -1 then the selected
 part will be the last part of the message, if index = -2 then the part before
 the last element with be selected, and so on.
+
+## `http`
+
+``` yaml
+type: http
+http:
+  parts: []
+  request:
+    backoff_on:
+    - 429
+    basic_auth:
+      enabled: false
+      password: ""
+      username: ""
+    content_type: application/octet-stream
+    drop_on: []
+    max_retry_backoff_ms: 300000
+    oauth:
+      access_token: ""
+      access_token_secret: ""
+      consumer_key: ""
+      consumer_secret: ""
+      enabled: false
+      request_url: ""
+    retries: 3
+    retry_period_ms: 1000
+    skip_cert_verify: false
+    timeout_ms: 5000
+    url: http://localhost:4195/post
+    verb: POST
+  request_map: {}
+  response_map: {}
+  strict_request_map: true
+```
+
+Performs an HTTP request using a message part as the request body and either
+replaces or augments the original message part with the body of the response.
+
+By default the entire contents of the message part are sent and the response
+entirely replaces the original contents. Alternatively, populating the
+`request_map` and `response_map` fields with a map of destination to
+source dot paths allows you to specify how the request payload is constructed,
+and how the response is mapped to the original payload respectively.
+
+When `strict_request_map` is set to `true` the processor is
+skipped for any payloads where a map target is not found.
+
+If the list of target parts is empty the processor will be applied to all
+message parts.
+
+Part indexes can be negative, and if so the part will be selected from the end
+counting backwards starting from -1. E.g. if part = -1 then the selected part
+will be the last part of the message, if part = -2 then the part before the
+last element with be selected, and so on.
 
 ## `insert_part`
 
@@ -611,8 +689,8 @@ unarchive:
 ```
 
 Unarchives parts of a message according to the selected archive type into
-multiple parts. Supported archive types are: tar, binary. If the list of target
-parts is empty the unarchive will be applied to all message parts.
+multiple parts. Supported archive types are: tar, binary, lines. If the list of
+target parts is empty the unarchive will be applied to all message parts.
 
 When a part is unarchived it is split into more message parts that replace the
 original part. If you wish to split the archive into one message per file then

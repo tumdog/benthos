@@ -44,7 +44,8 @@ type TypeSpec struct {
 		log log.Modular,
 		stats metrics.Type,
 	) (Type, error)
-	description string
+	description        string
+	sanitiseConfigFunc func(conf Config) (interface{}, error)
 }
 
 // Constructors is a map of all processor types with their specs.
@@ -61,12 +62,15 @@ type Config struct {
 	Combine     CombineConfig     `json:"combine" yaml:"combine"`
 	Compress    CompressConfig    `json:"compress" yaml:"compress"`
 	Conditional ConditionalConfig `json:"conditional" yaml:"conditional"`
+	Decode      DecodeConfig      `json:"decode" yaml:"decode"`
 	Decompress  DecompressConfig  `json:"decompress" yaml:"decompress"`
 	Dedupe      DedupeConfig      `json:"dedupe" yaml:"dedupe"`
+	Encode      EncodeConfig      `json:"encode" yaml:"encode"`
 	Filter      FilterConfig      `json:"filter" yaml:"filter"`
 	FilterParts FilterPartsConfig `json:"filter_parts" yaml:"filter_parts"`
 	Grok        GrokConfig        `json:"grok" yaml:"grok"`
 	HashSample  HashSampleConfig  `json:"hash_sample" yaml:"hash_sample"`
+	HTTP        HTTPConfig        `json:"http" yaml:"http"`
 	InsertPart  InsertPartConfig  `json:"insert_part" yaml:"insert_part"`
 	JMESPath    JMESPathConfig    `json:"jmespath" yaml:"jmespath"`
 	JSON        JSONConfig        `json:"json" yaml:"json"`
@@ -87,12 +91,15 @@ func NewConfig() Config {
 		Combine:     NewCombineConfig(),
 		Compress:    NewCompressConfig(),
 		Conditional: NewConditionalConfig(),
+		Decode:      NewDecodeConfig(),
 		Decompress:  NewDecompressConfig(),
 		Dedupe:      NewDedupeConfig(),
+		Encode:      NewEncodeConfig(),
 		Filter:      NewFilterConfig(),
 		FilterParts: NewFilterPartsConfig(),
 		Grok:        NewGrokConfig(),
 		HashSample:  NewHashSampleConfig(),
+		HTTP:        NewHTTPConfig(),
 		InsertPart:  NewInsertPartConfig(),
 		JMESPath:    NewJMESPathConfig(),
 		JSON:        NewJSONConfig(),
@@ -118,8 +125,14 @@ func SanitiseConfig(conf Config) (interface{}, error) {
 	}
 
 	outputMap := config.Sanitised{}
-	outputMap["type"] = hashMap["type"]
-	outputMap[conf.Type] = hashMap[conf.Type]
+	outputMap["type"] = conf.Type
+	if sfunc := Constructors[conf.Type].sanitiseConfigFunc; sfunc != nil {
+		if outputMap[conf.Type], err = sfunc(conf); err != nil {
+			return nil, err
+		}
+	} else {
+		outputMap[conf.Type] = hashMap[conf.Type]
+	}
 
 	return outputMap, nil
 }

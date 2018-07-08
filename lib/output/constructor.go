@@ -48,8 +48,9 @@ type TypeSpec struct {
 		stats metrics.Type,
 		pipelineConstructors ...pipeline.ConstructorFunc,
 	) (Type, error)
-	constructor func(conf Config, mgr types.Manager, log log.Modular, stats metrics.Type) (Type, error)
-	description string
+	constructor        func(conf Config, mgr types.Manager, log log.Modular, stats metrics.Type) (Type, error)
+	description        string
+	sanitiseConfigFunc func(conf Config) (interface{}, error)
 }
 
 // Constructors is a map of all output types with their specs.
@@ -72,6 +73,7 @@ type Config struct {
 	Files         writer.FilesConfig         `json:"files" yaml:"files"`
 	HTTPClient    writer.HTTPClientConfig    `json:"http_client" yaml:"http_client"`
 	HTTPServer    HTTPServerConfig           `json:"http_server" yaml:"http_server"`
+	Inproc        InprocConfig               `json:"inproc" yaml:"inproc"`
 	Kafka         writer.KafkaConfig         `json:"kafka" yaml:"kafka"`
 	MQTT          writer.MQTTConfig          `json:"mqtt" yaml:"mqtt"`
 	NATS          NATSConfig                 `json:"nats" yaml:"nats"`
@@ -100,6 +102,7 @@ func NewConfig() Config {
 		Files:         writer.NewFilesConfig(),
 		HTTPClient:    writer.NewHTTPClientConfig(),
 		HTTPServer:    NewHTTPServerConfig(),
+		Inproc:        NewInprocConfig(),
 		Kafka:         writer.NewKafkaConfig(),
 		MQTT:          writer.NewMQTTConfig(),
 		NATS:          NewNATSConfig(),
@@ -134,24 +137,9 @@ func SanitiseConfig(conf Config) (interface{}, error) {
 
 	t := conf.Type
 	outputMap["type"] = t
-
-	var nestedOutputs []Config
-	if t == "broker" {
-		nestedOutputs = conf.Broker.Outputs
-	}
-	if len(nestedOutputs) > 0 {
-		outSlice := []interface{}{}
-		for _, output := range nestedOutputs {
-			var sanOutput interface{}
-			if sanOutput, err = SanitiseConfig(output); err != nil {
-				return nil, err
-			}
-			outSlice = append(outSlice, sanOutput)
-		}
-		outputMap[t] = map[string]interface{}{
-			"copies":  conf.Broker.Copies,
-			"pattern": conf.Broker.Pattern,
-			"outputs": outSlice,
+	if sfunc := Constructors[t].sanitiseConfigFunc; sfunc != nil {
+		if outputMap[t], err = sfunc(conf); err != nil {
+			return nil, err
 		}
 	} else {
 		outputMap[t] = hashMap[t]

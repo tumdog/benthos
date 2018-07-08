@@ -9,25 +9,12 @@
 		"type": "read_until",
 		"read_until": {
 			"condition": {
-				"and": [],
+				"type": "content",
 				"content": {
 					"arg": "",
 					"operator": "equals_cs",
 					"part": 0
-				},
-				"count": {
-					"arg": 100
-				},
-				"jmespath": {
-					"part": 0,
-					"query": ""
-				},
-				"not": {},
-				"or": [],
-				"resource": "",
-				"static": true,
-				"type": "content",
-				"xor": []
+				}
 			},
 			"input": {},
 			"restart_input": false
@@ -38,23 +25,31 @@
 		"none": {}
 	},
 	"pipeline": {
-		"processors": [
-			{
-				"type": "bounds_check",
-				"bounds_check": {
-					"max_part_size": 1073741824,
-					"max_parts": 100,
-					"min_part_size": 1,
-					"min_parts": 1
-				}
-			}
-		],
+		"processors": [],
 		"threads": 1
 	},
 	"output": {
 		"type": "stdout",
 		"stdout": {
 			"delimiter": ""
+		}
+	},
+	"logger": {
+		"prefix": "benthos",
+		"log_level": "INFO",
+		"add_timestamp": true,
+		"json_format": true
+	},
+	"metrics": {
+		"type": "http_server",
+		"prefix": "benthos",
+		"http_server": {},
+		"prometheus": {},
+		"statsd": {
+			"address": "localhost:4040",
+			"flush_period": "100ms",
+			"max_packet_size": 1440,
+			"network": "udp"
 		}
 	}
 }

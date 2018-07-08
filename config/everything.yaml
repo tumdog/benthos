@@ -85,6 +85,7 @@ input:
     timeout_ms: 5000
     cert_file: ""
     key_file: ""
+  inproc: ""
   kafka:
     addresses:
     - localhost:9092
@@ -214,6 +215,7 @@ pipeline:
       path: ${!count:files}-${!timestamp_unix_nano}.txt
     batch:
       byte_size: 10000
+      period_ms: 0
     bounds_check:
       max_parts: 100
       min_parts: 1
@@ -245,6 +247,9 @@ pipeline:
         xor: []
       processors: []
       else_processors: []
+    decode:
+      scheme: base64
+      parts: []
     decompress:
       algorithm: gzip
       parts: []
@@ -255,6 +260,9 @@ pipeline:
       - 0
       json_paths: []
       drop_on_err: true
+    encode:
+      scheme: base64
+      parts: []
     filter:
       type: content
       and: []
@@ -301,6 +309,34 @@ pipeline:
       retain_max: 10
       parts:
       - 0
+    http:
+      parts: []
+      request:
+        url: http://localhost:4195/post
+        verb: POST
+        content_type: application/octet-stream
+        timeout_ms: 5000
+        retry_period_ms: 1000
+        max_retry_backoff_ms: 300000
+        retries: 3
+        backoff_on:
+        - 429
+        drop_on: []
+        skip_cert_verify: false
+        oauth:
+          enabled: false
+          consumer_key: ""
+          consumer_secret: ""
+          access_token: ""
+          access_token_secret: ""
+          request_url: ""
+        basic_auth:
+          enabled: false
+          username: ""
+          password: ""
+      request_map: {}
+      response_map: {}
+      strict_request_map: true
     insert_part:
       index: -1
       content: ""
@@ -407,6 +443,7 @@ output:
     timeout_ms: 5000
     cert_file: ""
     key_file: ""
+  inproc: ""
   kafka:
     addresses:
     - localhost:9092
